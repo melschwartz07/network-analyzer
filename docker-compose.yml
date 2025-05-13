@@ -6,8 +6,13 @@ services:
     environment:
       - NEO4J_AUTH=neo4j/password123
     ports:
-      - "7474:7474"   # Neo4j Browser
-      - "7687:7687"   # Bolt protocol
+      - "7474:7474"  # Neo4j Browser
+      - "7687:7687"  # Bolt protocol
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "password123", "--format", "plain", "RETURN 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
     volumes:
       - neo4j_data:/data
     restart: unless-stopped
@@ -17,11 +22,24 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - neo4j
+      neo4j:
+        condition: service_healthy
     environment:
       - NEO4J_URI=bolt://neo4j:7687
       - NEO4J_USER=neo4j
       - NEO4J_PASSWORD=password123
+    volumes:
+      - ./simulator:/app/simulator  # Mount simulator code
+      # - ./pcap:/app/pcap            # future implementation of real time traffic
+    command: >
+      sh -c "
+      echo 'Waiting for Neo4j to be fully ready...';
+      while ! cypher-shell -u neo4j -p password123 'RETURN 1' >/dev/null 2>&1; do
+        sleep 5;
+      done;
+      echo 'Starting application and simulator...';
+      go run main.go simulator/simulate.go
+      "
 
 volumes:
   neo4j_data:
