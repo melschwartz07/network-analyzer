@@ -26,7 +26,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to connect to Neo4j:", err)
 	}
-	fmt.Println("Connected to Neo4j!")
+	fmt.Println("Verified connection to Neo4j")
 
 	// test node
 	session := driver.NewSession(neo4j.SessionConfig{})
@@ -41,5 +41,5 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to create node:", err)
 	}
-	fmt.Println("Created test node in Neo4j!")
+	fmt.Println("Test node in Neo4j")
 }
