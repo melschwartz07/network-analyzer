@@ -1,24 +1,40 @@
-func monitor(driver neo4j.Driver) {
+// monitor/monitor.go
+package main
+
+import (
+	"context"
+	"log"
+	"time"
+
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
+)
+
+func monitorNetwork(driver neo4j.Driver) {
 	for {
-		session := driver.NewSession(neo4j.SessionConfig{})
-		result, err := session.Run(`
-			MATCH (n)-[r]->(m)
-			WHERE r.timestamp > datetime().subtract(duration('PT5M'))
-			WITH n.name AS source, count(r) AS connection_count
-			WHERE connection_count > 50
-			RETURN source, connection_count
-			ORDER BY connection_count DESC
-		`, nil)
-		
-		if err == nil {
-			for result.Next() {
-				record := result.Record()
-				log.Printf("ALERT: %s made %d connections.",
-					record.Values[0].(string),
-					record.Values[1].(int64))
-			}
-		}
-		session.Close()
+		checkConnectionFloods(driver)
+		checkBlockedAttempts(driver)
+		checkPortScans(driver)
 		time.Sleep(30 * time.Second)
+	}
+}
+
+func checkConnectionFloods(driver neo4j.Driver) {
+	session := driver.NewSession(neo4j.SessionConfig{})
+	defer session.Close()
+
+	result, _ := session.Run(`
+		MATCH (src)-[r:CONNECTED]->()
+		WHERE r.timestamp > datetime().subtract(duration('PT1M'))
+		WITH src, count(r) as connections
+		WHERE connections > 50
+		RETURN src.name as source, connections
+		ORDER BY connections DESC
+	`, nil)
+
+	for result.Next() {
+		rec := result.Record()
+		log.Printf("FLOOD ALERT: %s made %d connections/minute", 
+			rec.Values[0].(string), 
+			rec.Values[1].(int64))
 	}
 }
