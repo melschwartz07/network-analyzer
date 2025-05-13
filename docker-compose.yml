@@ -31,6 +31,7 @@ services:
     volumes:
       - ./simulator:/app/simulator  # Mount simulator code
       # - ./pcap:/app/pcap            # future implementation of real time traffic
+      - ./monitor:/app/monitor
     command: >
       sh -c "
       echo 'Waiting for Neo4j to be fully ready...';
@@ -40,6 +41,7 @@ services:
       echo 'Starting application and simulator...';
       go run main.go simulator/simulate.go
       "
+      go run monitor/monitor.go
 
 volumes:
   neo4j_data:
